@@ -1421,7 +1421,9 @@ Design vocabulary for an AWS CodeBuild project (Issue# 96 - aws-core-tap).
   `source_type`, `vpc_attached`, `region`, `tags`. Source: `codebuild:BatchGetProjects`
   (`arn`, `environment.image`, `environment.computeType`, `source.type`, `vpcConfig.vpcId`, `tags`).
   No collector emits it yet.
-- Identity is the ARN, as for the pipeline.
+- Identity is the ARN, as for the pipeline. The name part of the ARN follows botocore's `ProjectName` shape
+  (2-150 characters, letters, digits, hyphen and underscore, starting alphanumeric); the longest valid ARN fits
+  the column.
 - `compute_type` is AWS's string, not an enum, because AWS adds compute types with new environment types.
   `source_type` is AWS's enum (blank = not observed).
 - `vpc_attached` is null until observed; `false` means observed, with no VPC configuration. The project's

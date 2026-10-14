@@ -55,7 +55,7 @@ class CodebuildProject(BaseModel):
         "name": {"type": "string", "minLength": 1},
         "project_arn": {
             "type": "string",
-            "pattern": "^(arn:aws(-us-gov|-cn)?:codebuild:[a-z0-9-]+:[0-9]{12}:project/[A-Za-z0-9][A-Za-z0-9._-]*)?$",
+            "pattern": "^(arn:aws(-us-gov|-cn)?:codebuild:[a-z0-9-]+:[0-9]{12}:project/[A-Za-z0-9][A-Za-z0-9_-]{1,149})?$",
         },
         # environment.image: an ECR image URI, a Docker Hub name or an aws/codebuild/ standard image.
         "environment_image": {"type": "string"},

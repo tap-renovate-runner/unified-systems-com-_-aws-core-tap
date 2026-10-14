@@ -173,6 +173,26 @@ class TestCreate:
         assert not _node(PIPELINE, {"name": "x", "stage_names": [{"name": "Source"}]}).success
         assert not _node(PIPELINE, {"name": "x", "tags": {"env": 1}}).success
 
+    @pytest.mark.parametrize(
+        ("name", "accepted"),
+        [
+            ("ab", True),
+            ("a" * 150, True),
+            ("a-b_c9", True),
+            ("a", False),  # botocore ProjectName minimum is 2
+            ("a" * 151, False),  # botocore ProjectName maximum is 150
+            ("a.b", False),  # no dots in a project name
+            ("-ab", False),  # must start alphanumeric
+        ],
+    )
+    def test_project_arn_follows_the_project_name_shape(self, name: str, accepted: bool) -> None:
+        arn = f"arn:aws-us-gov:codebuild:us-gov-east-1:123456789012:project/{name}"
+        assert _node(PROJECT, {"name": "x", "project_arn": arn}).success is accepted
+
+    def test_longest_valid_project_arn_fits_the_column(self) -> None:
+        arn = "arn:aws-us-gov:codebuild:us-gov-east-1:123456789012:project/" + "a" * 150
+        assert len(arn) <= CodebuildProject._meta.get_field("project_arn").max_length
+
     def test_project_fields(self) -> None:
         ok = _node(
             PROJECT,
