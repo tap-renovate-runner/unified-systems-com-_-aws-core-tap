@@ -1,0 +1,17 @@
+{
+  "slug": "RUNS_BUILD__aws_core",
+  "name": "Runs Build",
+  "description": "A CodePipeline pipeline runs a CodeBuild project (pipeline -> project): a build or test action in one of its stages starts a build of that project. One edge per pair, however many actions of the pipeline run the project; the stage and action are not modelled.",
+  "sources": [
+    "aws_core__aws_codepipeline_pipeline"
+  ],
+  "targets": [
+    "aws_core__aws_codebuild_project"
+  ],
+  "identity": {
+    "discriminators": []
+  },
+  "default_dimensions": {
+    "tap.cloud": "aws"
+  }
+}

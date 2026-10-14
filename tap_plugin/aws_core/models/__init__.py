@@ -38,6 +38,8 @@ from tap_plugin.aws_core.models.bedrock_model import BedrockModel
 from tap_plugin.aws_core.models.cloudfront_distribution import CloudfrontDistribution
 from tap_plugin.aws_core.models.cloudtrail_trail import CloudtrailTrail
 from tap_plugin.aws_core.models.cloudwatch_log_group import CloudwatchLogGroup
+from tap_plugin.aws_core.models.codebuild_project import CodebuildProject
+from tap_plugin.aws_core.models.codepipeline_pipeline import CodepipelinePipeline
 from tap_plugin.aws_core.models.cognito_user_pool import CognitoUserPool
 from tap_plugin.aws_core.models.dx_connection import DxConnection
 from tap_plugin.aws_core.models.dx_gateway import DxGateway
@@ -122,6 +124,8 @@ __all__ = [
     "CloudfrontDistribution",
     "CloudtrailTrail",
     "CloudwatchLogGroup",
+    "CodebuildProject",
+    "CodepipelinePipeline",
     "CognitoUserPool",
     "DxConnection",
     "DxGateway",
