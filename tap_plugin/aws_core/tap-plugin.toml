@@ -96,6 +96,8 @@ aws_core__aws_vpc_endpoint_service = "tap_plugin.aws_core.models.vpc_endpoint_se
 aws_core__aws_vpc_endpoint = "tap_plugin.aws_core.models.vpc_endpoint.VpcEndpoint"
 aws_core__aws_route53_resolver_firewall_rule_group = "tap_plugin.aws_core.models.route53_resolver_firewall_rule_group.Route53ResolverFirewallRuleGroup"
 aws_core__aws_acm_private_ca = "tap_plugin.aws_core.models.acm_private_ca.AcmPrivateCa"
+aws_core__aws_codepipeline_pipeline = "tap_plugin.aws_core.models.codepipeline_pipeline.CodepipelinePipeline"
+aws_core__aws_codebuild_project = "tap_plugin.aws_core.models.codebuild_project.CodebuildProject"
 
 [edges]
 DIVIDED_INTO_AZ__aws_core = "edges/DIVIDED_INTO_AZ.edge.json"
@@ -173,6 +175,10 @@ HOSTS_CONFIG_RULE__aws_core = "edges/HOSTS_CONFIG_RULE.edge.json"
 HOSTS_CONFORMANCE_PACK__aws_core = "edges/HOSTS_CONFORMANCE_PACK.edge.json"
 CONCERNS_RESOURCE__aws_core = "edges/CONCERNS_RESOURCE.edge.json"
 EVALUATED_UNDER_STANDARD__aws_core = "edges/EVALUATED_UNDER_STANDARD.edge.json"
+RETRIEVES_SOURCE_FROM__aws_core = "edges/RETRIEVES_SOURCE_FROM.edge.json"
+RUNS_BUILD__aws_core = "edges/RUNS_BUILD.edge.json"
+WRITES_OBJECT__aws_core = "edges/WRITES_OBJECT.edge.json"
+RETRIEVES_SECRET_FROM__aws_core = "edges/RETRIEVES_SECRET_FROM.edge.json"
 
 [falsifiers]
 # One per reconcilable type: every type some model's CONTAINMENT_EDGES makes a containment TARGET

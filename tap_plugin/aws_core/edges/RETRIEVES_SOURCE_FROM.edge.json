@@ -1,0 +1,17 @@
+{
+  "slug": "RETRIEVES_SOURCE_FROM__aws_core",
+  "name": "Retrieves Source From",
+  "description": "A CodePipeline pipeline retrieves its source artifact from an S3 bucket (pipeline -> bucket): the pipeline's S3 source action. The pipeline initiates the pull (edge direction); the source object flows from the bucket back to the pipeline, a data-backwards edge, which the `_FROM` marks. Its own relationship, apart from RETRIEVES_CONTENT_FROM (a CDN fetching an origin).",
+  "sources": [
+    "aws_core__aws_codepipeline_pipeline"
+  ],
+  "targets": [
+    "aws_core__aws_s3_bucket"
+  ],
+  "identity": {
+    "discriminators": []
+  },
+  "default_dimensions": {
+    "tap.cloud": "aws"
+  }
+}

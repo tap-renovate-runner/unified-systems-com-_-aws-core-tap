@@ -55,6 +55,8 @@
     "aws_core__aws_vpc_endpoint",
     "aws_core__aws_route53_resolver_firewall_rule_group",
     "aws_core__aws_acm_private_ca",
+    "aws_core__aws_codepipeline_pipeline",
+    "aws_core__aws_codebuild_project",
     "aws_core__aws_account_region"
   ],
   "targets": [

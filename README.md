@@ -144,6 +144,7 @@ collector does not populate them today:
 - **Identity & secrets**: IAM users, IAM policies, SSM parameters, IAM Identity
   Center instances, ACM Private CAs
 - **AI/ML**: Bedrock models, SageMaker endpoints
+- **Developer tools**: CodePipeline pipelines, CodeBuild projects
 
 ### Everything else
 

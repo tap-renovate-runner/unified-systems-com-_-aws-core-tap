@@ -39,6 +39,9 @@ v0 is intentionally scoped to the "meat and potatoes" AWS resources common to mo
 | req-aws-core-privatelink | [PrivateLink](#privatelink) | Implemented | Endpoint service and VPC endpoint design vocabulary |
 | req-aws-core-dns-firewall | [Route 53 Resolver DNS Firewall](#route-53-resolver-dns-firewall) | Implemented | Rule group with typed domain-list summary; VPC association edge |
 | req-aws-core-private-ca | [ACM Private CA](#acm-private-ca) | Implemented | Private CA design vocabulary and the issuer edge |
+| req-aws-core-codepipeline | [CodePipeline Pipeline](#codepipeline-pipeline) | Implemented | Pipeline design vocabulary: ARN identity, stage names, pipeline type, execution mode. No collector yet |
+| req-aws-core-codebuild | [CodeBuild Project](#codebuild-project) | Implemented | Build project design vocabulary: ARN identity, image, compute type, source type, VPC attachment. No collector yet |
+| req-aws-core-deploy-flow-edges | [Deploy-Flow Edges](#deploy-flow-edges) | Implemented | A pipeline retrieves its S3 source and runs a build project; a function writes a bucket; a function or project retrieves a secret; the pipeline and project assume a role |
 | req-aws-core-page-dashboard | [AWS Pages](#aws-pages) | Implemented | `/aws`: count tiles, the estate as one picture, accounts per OU, boundary scope |
 | req-aws-core-page-organization | [AWS Pages](#aws-pages) | Implemented | `/aws/organization`: the OU tree as nested boxes, SCP attachments, account placement |
 | req-aws-core-page-network | [AWS Pages](#aws-pages) | Implemented | `/aws/network`: transit gateways, attachments, VPCs around their subnets, gateways, firewalls, Direct Connect |
@@ -81,6 +84,7 @@ The plugin covers:
 - identity and access (IAM User, IAM Role, IAM Policy, IAM OIDC Provider, IAM Identity Center instance)
 - organization structure (Organization, Organizational Unit, Service Control Policy)
 - security and configuration (ACM Certificate, ACM Private CA, Secrets Manager, SSM Parameter Store)
+- developer tools (CodePipeline pipeline, CodeBuild project)
 - AI services (Bedrock, SageMaker)
 - infrastructure reference (Region, Availability Zone, Account)
 
@@ -125,6 +129,7 @@ drifts on every model added; the manifest + validator own "which models exist").
 | AI | BedrockModel, SagemakerEndpoint |
 | Observability | CloudwatchLogGroup |
 | Integration | EventbridgeRule |
+| Developer tools | CodepipelinePipeline, CodebuildProject |
 
 All models follow the TAP BaseModel contract with `ENTITY_TYPE`, `ENTITY_NAME`, `ENTITY_DESCRIPTION`, `ENTITY_ICON`, `FIELD_CRUD_SCHEMA`, `FIELD_VALIDATION_SCHEMA`, and `CREATE_REQUIRED`.
 
@@ -234,7 +239,7 @@ The categories (representative; the manifest is the canonical, enforced list):
 | --- | --- | --- |
 | Structural | DIVIDED_INTO_AZ, NESTED_UNDER_PARENT, BELONGS_TO_ACCOUNT, RESIDES_IN_VPC, PARTITIONED_INTO_SUBNET, RESIDES_IN_SUBNET, ATTACHED_TO_VPC, RESIDES_IN_AZ | Region → availability zone reference topology (parent→child); the Organizations tree (child→parent) |
 | Network attachment | ATTACHED_TO_TRANSIT_GATEWAY, ATTACHES_VPC, PEERS_WITH_TRANSIT_GATEWAY, ATTACHES_DX_GATEWAY, CARRIED_ON_CONNECTION, ATTACHED_TO_DX_GATEWAY, TERMINATES_AT_CUSTOMER_DEVICE, CONSUMES_ENDPOINT_SERVICE | Transit gateway attachments, Direct Connect, and PrivateLink |
-| Operational | INVOKES_LAMBDA, ROUTES_TRAFFIC, WRITES_LOGS, RETRIEVES_CONTENT_FROM, RETRIEVES_CERT_FROM | Runtime actions, traffic, and data retrieval (`_FROM` = data-backwards) |
+| Operational | INVOKES_LAMBDA, ROUTES_TRAFFIC, WRITES_LOGS, RETRIEVES_CONTENT_FROM, RETRIEVES_CERT_FROM, RETRIEVES_SOURCE_FROM, RETRIEVES_SECRET_FROM, RUNS_BUILD, WRITES_OBJECT | Runtime actions, traffic, and data retrieval (`_FROM` = data-backwards) |
 | Access/Security | ASSUMES_ROLE, FEDERATES_INTO_ROLE, ATTACHED_TO_TARGET, TRUSTS_IDENTITY_SOURCE, FILTERS_VPC_DNS, ISSUED_BY_CA | IAM role assumption and federated identity; SCP attachment; Identity Center's external identity provider |
 
 Edge types use explicit `sources` and `targets` constraints where the relationship is well-defined (e.g. `ASSUMES_ROLE` from IAM users/roles, Lambda functions, and EventBridge rules to IAM roles; `RETRIEVES_CONTENT_FROM` from CloudFront distributions to S3 buckets). Where one end is genuinely open, only the other is constrained (e.g. `INVOKES_LAMBDA` fixes its target to `aws_lambda` and leaves the source open).
@@ -1371,6 +1376,128 @@ Status: `Implemented`
 | req-aws-core-private-ca-1 | Keyed On CA ARN | Implemented | The CA declares `NATURAL_KEY = ("ca_arn",)`; the ARN validates against the acm-pca shape or is blank. | |
 | req-aws-core-private-ca-2 | Typed Enums | Implemented | CA type, key algorithm, status and usage mode are AWS's enums (blank = not observed). | |
 | req-aws-core-private-ca-3 | Issuer Edge | Implemented | `ISSUED_BY_CA` declares private CA or ACM certificate → private CA. | |
+
+### CodePipeline Pipeline
+----
+RID: `req-aws-core-codepipeline`
+
+Status: `Implemented`
+
+Design vocabulary for an AWS CodePipeline pipeline, so a deploy flow (a pipeline that pulls a Terraform
+bundle from S3, plans, waits for a human, and applies) can be drawn from real nodes. Raised as
+Issue# 96 - aws-core-tap (https://github.com/unified-systems-com/aws-core-tap/issues/96).
+
+#### Implementation
+
+- `aws_core__aws_codepipeline_pipeline`: `name`, `pipeline_arn`, `stage_names` (the stage names in pipeline
+  order), `pipeline_type` (`V1` / `V2`), `execution_mode` (`QUEUED` / `SUPERSEDED` / `PARALLEL`), `region`,
+  `tags`. Source: `codepipeline:GetPipeline` (`pipeline.stages[].name`, `pipelineType`, `executionMode`,
+  `metadata.pipelineArn`) and `ListTagsForResource`. No collector emits it yet.
+- Identity is the ARN: a pipeline name is unique only within one account and region.
+- Stages are names, not nodes. The actions inside a stage appear only as the edges they imply
+  (`RETRIEVES_SOURCE_FROM`, `RUNS_BUILD`, `ASSUMES_ROLE`); a manual approval action has no node, because
+  nothing outside the pipeline refers to it.
+- No `configuration` blob: no source fills one, and no typed field needs the action configuration.
+
+#### Acceptance Criteria
+
+| ACID | Title | Status | Description | Notes |
+| --- | --- | :---: | --- | --- |
+| req-aws-core-codepipeline-1 | Keyed On Pipeline ARN | Implemented | The pipeline declares `NATURAL_KEY = ("pipeline_arn",)`; the ARN validates against the CodePipeline shape in any supported partition or is blank. | `tests/test_codepipeline_codebuild_vocabulary.py` |
+| req-aws-core-codepipeline-2 | Typed Fields | Implemented | `pipeline_type` and `execution_mode` are AWS's enums (blank = not observed); `stage_names` is an array of non-empty strings; `tags` is a flat string map. | |
+| req-aws-core-codepipeline-3 | No Blob, No Owner Copy | Implemented | The type has no `configuration` and no `owner_account_id`; the owning account is `BELONGS_TO_ACCOUNT`. | |
+
+### CodeBuild Project
+----
+RID: `req-aws-core-codebuild`
+
+Status: `Implemented`
+
+Design vocabulary for an AWS CodeBuild project (Issue# 96 - aws-core-tap).
+
+#### Implementation
+
+- `aws_core__aws_codebuild_project`: `name`, `project_arn`, `environment_image`, `compute_type`,
+  `source_type`, `vpc_attached`, `region`, `tags`. Source: `codebuild:BatchGetProjects`
+  (`arn`, `environment.image`, `environment.computeType`, `source.type`, `vpcConfig.vpcId`, `tags`).
+  No collector emits it yet.
+- Identity is the ARN, as for the pipeline.
+- `compute_type` is AWS's string, not an enum, because AWS adds compute types with new environment types.
+  `source_type` is AWS's enum (blank = not observed).
+- `vpc_attached` is null until observed; `false` means observed, with no VPC configuration. The project's
+  VPC, subnets and security groups are not edges yet (see Deliberately Not Included).
+- **No environment variables, buildspec or source credentials.** A project's `environment.environmentVariables`
+  can hold plaintext secrets and its `source.buildspec` can inline commands; nothing here needs them, so there
+  is no `configuration` field and no field for either. A collector must also keep them out of any persisted
+  payload (`persist_configuration: false`, with the sensitivity review in the `add-aws-type` skill).
+
+#### Acceptance Criteria
+
+| ACID | Title | Status | Description | Notes |
+| --- | --- | :---: | --- | --- |
+| req-aws-core-codebuild-1 | Keyed On Project ARN | Implemented | The project declares `NATURAL_KEY = ("project_arn",)`; the ARN validates against the CodeBuild project shape in any supported partition or is blank. | `tests/test_codepipeline_codebuild_vocabulary.py` |
+| req-aws-core-codebuild-2 | Typed Fields | Implemented | `source_type` is AWS's enum (blank = not observed); `vpc_attached` is boolean or null; `tags` is a flat string map. | |
+| req-aws-core-codebuild-3 | Nothing That Can Carry A Secret | Implemented | The type has no `configuration`, environment-variable or buildspec field. | |
+| req-aws-core-codebuild-4 | Null Is Unobserved | Implemented | A project created without `vpc_attached` stores null, and one created with `false` stores false. | |
+
+### Deploy-Flow Edges
+----
+RID: `req-aws-core-deploy-flow-edges`
+
+Status: `Implemented`
+
+The edges that connect the two types above, and the Lambda and secret that feed them, to the rest of the
+vocabulary (Issue# 96 - aws-core-tap). Names follow `<ACTION>_<OBJECT>` (`req-tap-plugin-edge-naming`); the
+edge points from the initiator, and `_FROM` is used only where data flows against the edge.
+
+#### Implementation
+
+- `RETRIEVES_SOURCE_FROM` (pipeline → S3 bucket): the pipeline's S3 source action. The pipeline initiates
+  the pull and the object flows back, so it is data-backwards and takes `_FROM`. It is its own edge, apart
+  from `RETRIEVES_CONTENT_FROM` (a CDN fetching an origin): one edge, one relationship. Which object key the
+  action names is not a property: a pipeline can have several S3 source actions on one bucket, and an edge
+  found by type, source and target holds one.
+- `RUNS_BUILD` (pipeline → CodeBuild project): a build or test action starts a build of the project. The
+  stage and action are not modelled; the stage names are on the pipeline.
+- `WRITES_OBJECT` (Lambda → S3 bucket): the function uploads objects, for example the Terraform bundle a
+  pipeline later pulls. Data flows the way the edge points, so no `_FROM`. Sources are Lambda functions
+  only; a second writer type is added on purpose.
+- `RETRIEVES_SECRET_FROM` (Lambda or CodeBuild project → Secrets Manager secret): the reader calls
+  `GetSecretValue` or has the secret mapped into its environment. The value flows back, so `_FROM`. The edge
+  states that the read exists, never the value.
+- `ASSUMES_ROLE` gains the pipeline and the project as sources (their service roles); its target is still
+  `aws_iam_role`.
+- `BELONGS_TO_ACCOUNT` gains the pipeline and the project as sources.
+- **Delete tree.** None of these is containment. A pipeline does not own its bucket, role, project or
+  secret, and the types declare no `CONTAINMENT_EDGES`.
+- **GovCloud.** CodePipeline and CodeBuild are available in both GovCloud (US) regions. The CodeConnections
+  source actions (GitHub and others) exist only in GovCloud (US-East), and the CodeBuild action has no batch
+  builds there. Both statements are taken from Issue# 96 - aws-core-tap, which cites the AWS GovCloud User
+  Guide; they were not re-checked against AWS here. They constrain what a collector can read, not the
+  vocabulary, and the partition-aware ARN patterns above accept `aws-us-gov`.
+
+#### Deliberately Not Included
+
+- **A collector.** No manifest entry exists for either type, so nothing populates them yet. Adding one is
+  the `add-aws-type` skill's work: a sensitivity declaration for every call (`GetPipeline`,
+  `ListPipelines`, `BatchGetProjects`, `ListProjects` and the tag calls; a project's environment variables
+  and a pipeline's action configuration are the locations to review), the requester's ruling on
+  `persist_configuration`, edge derivation from the pipeline's action configuration (`S3Bucket`,
+  `ProjectName`) and the project's `serviceRole`, and the live trial run. The edges above are declared
+  now so those emitters have somewhere to land.
+- **Edges the demo does not need:** a pipeline's artifact-store KMS key (`ENCRYPTED_WITH_KEY`), a CodeBuild
+  project's VPC, subnets and security groups (`RESIDES_IN_VPC`, `RESIDES_IN_SUBNET`), its log group
+  (`WRITES_LOGS`, being retired), and an S3-sourced build project (`RETRIEVES_SOURCE_FROM` with a project
+  source).
+
+#### Acceptance Criteria
+
+| ACID | Title | Status | Description | Notes |
+| --- | --- | :---: | --- | --- |
+| req-aws-core-deploy-flow-edges-1 | Four New Edges | Implemented | `RETRIEVES_SOURCE_FROM` (pipeline → bucket), `RUNS_BUILD` (pipeline → project), `WRITES_OBJECT` (Lambda → bucket) and `RETRIEVES_SECRET_FROM` (Lambda or project → secret) declare exactly those endpoints. | `tests/test_codepipeline_codebuild_vocabulary.py` (declarations and accepted pairs). The write path does not reject other pairs (tap#794), so the rejection cases test the declaration. |
+| req-aws-core-deploy-flow-edges-2 | Existing Edges Extended | Implemented | `ASSUMES_ROLE` and `BELONGS_TO_ACCOUNT` list the pipeline and the project as sources. | |
+| req-aws-core-deploy-flow-edges-3 | Data-Backwards Edges Take `_FROM` | Implemented | The three retrieval-style edges are named `RETRIEVES_*_FROM`; `WRITES_OBJECT` is not. | |
+| req-aws-core-deploy-flow-edges-4 | No Containment | Implemented | Neither new type declares `CONTAINMENT_EDGES`. | |
 
 ### v0 Non-Goals
 ----

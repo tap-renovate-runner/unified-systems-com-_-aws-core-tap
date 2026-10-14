@@ -1,0 +1,17 @@
+{
+  "slug": "WRITES_OBJECT__aws_core",
+  "name": "Writes Object",
+  "description": "A Lambda function writes objects to an S3 bucket (function -> bucket), for example one that assembles a deployment bundle and uploads it. The function initiates the write and the data flows the same way, so no `_FROM`. Which keys it writes is not modelled.",
+  "sources": [
+    "aws_core__aws_lambda"
+  ],
+  "targets": [
+    "aws_core__aws_s3_bucket"
+  ],
+  "identity": {
+    "discriminators": []
+  },
+  "default_dimensions": {
+    "tap.cloud": "aws"
+  }
+}
