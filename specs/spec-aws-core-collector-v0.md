@@ -851,7 +851,7 @@ manifest).
 
 #### Implementation
 
-**Calls (one `custom_fn`, `ecs_tasks_described`).** A multi-call fan-out is what `custom_fn` is for
+**Calls (one walk, four `custom_fn`s).** The fan-out is made once per run and region by `walk_ecs` (`ecs.py`); `ecs_clusters_described`, `ecs_services_described`, `ecs_tasks_described` and `ecs_containers_described` each take their slice of it, because a manifest entry yields exactly one node type. A multi-call fan-out is what `custom_fn` is for
 ([Source Primitive](#source-primitive)). Per swept region: `ListClusters`, then `DescribeClusters`; per cluster
 `ListServices` then `DescribeServices` (at most 10 per call), and `ListTasks` then `DescribeTasks` (at most
 100 per call), the Describe calls with `include=["TAGS"]`. Every paginated call is read to its end
@@ -906,7 +906,7 @@ requirement.
 
 | ACID | Title | Status | Description | Notes |
 | --- | --- | :---: | --- | --- |
-| req-aws-collector-ecs-1 | Three Types Collected | Proposed | A run collects `aws_ecs_cluster`, `aws_ecs_service` and `aws_ecs_task` from every swept region through a manifest entry backed by one `custom_fn`. | Today none has a manifest entry. |
+| req-aws-collector-ecs-1 | Three Types Collected | Proposed | A run collects `aws_ecs_cluster`, `aws_ecs_service` and `aws_ecs_task` from every swept region through manifest entries backed by `custom_fn`s that share one ECS walk. | Today none has a manifest entry. One entry yields one node type, so the container node has its own entry (`-3`). |
 | req-aws-collector-ecs-2 | Call Shape And Pagination | Proposed | The calls are `ListClusters`/`DescribeClusters`, `ListServices`/`DescribeServices` (10 per call) and `ListTasks`/`DescribeTasks` (100 per call, `include=["TAGS"]`), each read to its end. | `req-aws-collector-pagination-1`. |
 | req-aws-collector-ecs-3 | Container Node | Proposed | Each container in a described task is an `aws_ecs_container` node keyed on `container_arn`, with `name`, `image`, `image_digest`, `runtime_id` and `last_status`. | |
 | req-aws-collector-ecs-4 | Digest Verbatim | Proposed | `image` and `image_digest` are stored as ECS reports them. The collector makes no registry call and never resolves a tag to a digest. | The tag may move; the digest is what ran. |
@@ -917,7 +917,7 @@ requirement.
 | req-aws-collector-ecs-9 | Sensitivity Declared, Configuration Off | Proposed | The entry declares `overrides.containerOverrides[].environment` and `.command` as `reviewed_may_contain` credential locations with `persist_configuration: false`, and a planted canary at each location never reaches the GRIFT document or the stored row. | Requester decides storing; owner decides a credential location. |
 | req-aws-collector-ecs-10 | Denial Degrades, Never Cleans | Proposed | An `AccessDenied` on any ECS sub-call leaves the fields that call supplies null and records a warning. The task or container is still collected, and the denial is distinguishable from an empty result. | Mirrors `req-aws-collector-hydrate-2`. |
 | req-aws-collector-ecs-11 | Absence Is Not Deletion | Proposed | A task absent from a later run is not deleted or modified, and the collector adds no "currently running" flag. | `req-aws-collector-scope-3`; reconcile stays Backlog. |
-| req-aws-collector-ecs-12 | Read-Only Permissions | Proposed | The collector's permission list adds exactly the six `ecs:List*`/`ecs:Describe*` actions named above and no write action. | |
+| req-aws-collector-ecs-12 | Read-Only Permissions | Proposed | The collector's permission list adds exactly the six `ecs:List*`/`ecs:Describe*` actions named above and no write action. | The repo's only action list is the trial policy's read section (`handoff/trial-provisioner-policy.json`); the cross-account handoff grants AWS-managed `SecurityAudit`, which already covers these reads. |
 | req-aws-collector-ecs-13 | Live Trial Before Release | Proposed | The change passes the `add-aws-type` trial run against a real cluster and Fargate task (or carries a named `deferred_reason`) and a collected container's digest is shown equal to the digest `DescribeTasks` returns for it. | Needs a human to approve what is provisioned. |
 | req-aws-collector-ecs-14 | Digest Join Not Made Here | Proposed | This requirement adds no import of github_core or computing_core types and no digest-matching logic. | The join home is an open computing_core question. |
 
