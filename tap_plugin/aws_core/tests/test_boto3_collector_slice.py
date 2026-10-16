@@ -20,7 +20,7 @@ from tap_plugin.aws_core.collectors.boto3_collector import collector as collecto
 from tap_plugin.aws_core.collectors.boto3_collector import credentials as cred
 from tap_plugin.aws_core.collectors.boto3_collector.collector import Boto3Collector
 from tap_plugin.aws_core.collectors.boto3_collector.manifest import manifest_entries
-from tap_plugin.aws_core.tests.grid_keys import edge_between, node_id
+from tap_plugin.aws_core.tests.grid_keys import edge_between, find_node_id, node_id
 
 from tap_cares.collectors.config import CollectorConfig
 from tap_cares.secrets.models import Secret, SecretRef
@@ -758,3 +758,34 @@ def test_ecs_tree_lands_with_the_digest_and_its_edges(_stub_aws):
     edge_between(
         "RUNS_CONTAINER__aws_core", "aws_core__aws_ecs_task", _ECS_TASK, "aws_core__aws_ecs_container", _ECS_CONTAINER
     )
+
+
+@pytest.mark.django_db
+def test_ecs_describe_denied_still_imports_the_nodes_with_a_gap(_stub_aws, monkeypatch):
+    """req-aws-collector-ecs-10: with every Describe denied, the cluster, service and task still pass core's
+    GRIFT validation from their listed ARNs (nulls for what was not read), each denial is a HYDRATE_GAP
+    warning, and no container is invented."""
+    from botocore.exceptions import ClientError
+    from tap_grid.services import get_node
+
+    def _denied(self, **_kw):
+        raise ClientError({"Error": {"Code": "AccessDeniedException"}}, "Describe")
+
+    for op in ("describe_clusters", "describe_services", "describe_tasks"):
+        monkeypatch.setattr(_CannedClient, op, _denied, raising=False)
+    collector = Boto3Collector(CollectorConfig(collector_entity_id=uuid.uuid7(), collection_job_entity_id=uuid.uuid7()))
+    collector.run()
+    assert collector.results["error"] == []
+
+    cluster = get_node(node_id("aws_core__aws_ecs_cluster", _ECS_CLUSTER))
+    service = get_node(node_id("aws_core__aws_ecs_service", _ECS_SERVICE))
+    task = get_node(node_id("aws_core__aws_ecs_task", _ECS_TASK))
+    assert (cluster.name, service.name, task.name) == ("slice", "web", "aaaa1111")
+    assert task.last_status is None and task.group is None  # not read: null, never ""
+    gaps = [w for w in collector.results["warn"] if w["message_code"] == "HYDRATE_GAP"]
+    assert {g["message_data"]["entity_type"] for g in gaps} >= {
+        "aws_core__aws_ecs_cluster",
+        "aws_core__aws_ecs_service",
+        "aws_core__aws_ecs_task",
+    }
+    assert find_node_id("aws_core__aws_ecs_container", _ECS_CONTAINER) is None

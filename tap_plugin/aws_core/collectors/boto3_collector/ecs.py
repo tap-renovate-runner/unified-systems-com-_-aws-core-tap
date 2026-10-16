@@ -226,7 +226,9 @@ def walk_ecs(client: Any) -> EcsWalk:
             cluster=cluster_arn, include=["TAGS"],
         )  # fmt: skip
 
-        cluster_item = dict(clusters.get(cluster_arn) or {"clusterArn": cluster_arn})
+        cluster_item = dict(
+            clusters.get(cluster_arn) or {"clusterArn": cluster_arn, "clusterName": _last_segment(cluster_arn)}
+        )
         cluster_item["_hydrate"] = {
             **({"describe": cluster_gaps[cluster_arn]} if cluster_arn in cluster_gaps else {}),
             "services": services_slot,
