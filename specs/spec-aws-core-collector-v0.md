@@ -906,7 +906,7 @@ requirement.
 
 | ACID | Title | Status | Description | Notes |
 | --- | --- | :---: | --- | --- |
-| req-aws-collector-ecs-1 | Three Types Collected | Implemented | A run collects `aws_ecs_cluster`, `aws_ecs_service` and `aws_ecs_task` from every swept region through manifest entries backed by `custom_fn`s that share one ECS walk. | Today none has a manifest entry. One entry yields one node type, so the container node has its own entry (`-3`). |
+| req-aws-collector-ecs-1 | Three Types Collected | Implemented | A run collects `aws_ecs_cluster`, `aws_ecs_service` and `aws_ecs_task` from every swept region through manifest entries backed by `custom_fn`s that share one ECS walk. | Before this requirement none had a manifest entry; now each does. One entry yields one node type, so the container node has its own entry (`-3`). |
 | req-aws-collector-ecs-2 | Call Shape And Pagination | Implemented | The calls are `ListClusters`/`DescribeClusters`, `ListServices`/`DescribeServices` (10 per call) and `ListTasks`/`DescribeTasks` (100 per call, `include=["TAGS"]`), each read to its end. | `req-aws-collector-pagination-1`. |
 | req-aws-collector-ecs-3 | Container Node | Implemented | Each container in a described task is an `aws_ecs_container` node keyed on `container_arn`, with `name`, `image`, `image_digest`, `runtime_id` and `last_status`. | |
 | req-aws-collector-ecs-4 | Digest Verbatim | Implemented | `image` and `image_digest` are stored as ECS reports them. The collector makes no registry call and never resolves a tag to a digest. | The tag may move; the digest is what ran. |
